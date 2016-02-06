@@ -384,9 +384,24 @@ module Mv
 			dc.pen = @scalebar_pen
 			dc.font = @scalebar_font
 			dc.text_foreground = @scalebar_text_fg
-      dc.draw_lines @scalebar_pts
+			
       on_scale_changed unless @scalebar_dist
-      dc.draw_text @scalebar_dist.to_s + 'm', *@scalebar_pts[0]
+      scalebar_dist_mod = proc{
+        i, f = Math::log10(@scalebar_dist).divmod(1)
+        (10 ** i) * (f > Math::log10(5) ? 5 : 1)
+      }.call
+      
+      scalebar_pts_mod = [ \
+          @scalebar_pts[0], @scalebar_pts[1], \
+          @scalebar_pts[2].clone, @scalebar_pts[3].clone]
+      scalebar_pts_mod[2][1] \
+          = scalebar_pts_mod[3][1] \
+          = @scalebar_pts[1][1] \
+            + ((@scalebar_pts[2][1] - @scalebar_pts[1][1]).to_f \
+              / @scalebar_dist * scalebar_dist_mod).to_i
+      
+      dc.draw_lines scalebar_pts_mod
+      dc.draw_text((scalebar_dist_mod.to_s + 'm'), *scalebar_pts_mod[0])
       
       com = THE_APP.com(0)
       pos_cur_map = @map.gps_to_map([com[:latitude], com[:longitude]])
