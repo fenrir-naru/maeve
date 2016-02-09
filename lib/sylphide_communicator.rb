@@ -4,6 +4,31 @@ require 'acceleration_calibrator'
 require 'property_holder'
 
 module Mv
+  class RawdataDepacketizer
+    def initialize
+      @buf = ""
+      @seqnum = 0
+    end
+
+    def depacketize dat
+      @buf.concat(dat)
+      idx = 0
+      res = []
+      catch(:data_shortage){
+        loop do
+          next_idx = idx + 32
+          throw :data_shortage if next_idx > @buf.length
+          res.push({:payload => @buf[idx...next_idx], :seqnum => @seqnum})
+          idx = next_idx
+          @seqnum += 1
+          @seqnum = 0 if @seqnum >= 0x10000
+        end
+      }
+      @buf = idx ? @buf[idx..-1] : ""
+      res
+    end
+  end
+  
   class SylphideCommunicator
     N_SERVO_OUT_CH = 8
     N_SERVO_IN_CH = 8
@@ -11,6 +36,7 @@ module Mv
     def initialize
       @properties = PropertyHolder.new
       @dpk = Mv::ComStreamDepacketizer.new
+      #@dpk = Mv::RawdataDepacketizer.new # TODO: for log.dat on SD
       @packetizer = Mv::ComStreamPacketizer.new
       @proc = SylphideProcessor::SylphideLog::new(1024)
 
